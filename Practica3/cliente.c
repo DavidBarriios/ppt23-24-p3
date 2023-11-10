@@ -42,7 +42,7 @@ int main(int* argc, char* argv[])
 	char ipdest[256];
 	char default_ip4[16] = "127.0.0.1";
 	char default_ip6[64] = "::1";
-	char a[1000], subj[64], to[64], from[64];
+	char subj[64], to[64], from[64];
 	int recibir = 1, cabeceras = 0;
 
 	WORD wVersionRequested;
@@ -177,10 +177,24 @@ int main(int* argc, char* argv[])
 							sprintf_s(buffer_out, sizeof(buffer_out), "%s %s%s", ECHO, input, CRLF);
 						}
 						*/
+						cabeceras = 0;
 						sprintf_s(buffer_out, sizeof(buffer_out), " %s%s", DT, CRLF);
 						break;
 
 					case S_MSG:									//En el estado MSG montamos el mensaje que vamos a mandar
+						recibir = 0;								//Inicializamos la variable recibir a 0, para repetir el proceso de escribir un mensaje hasta que haya un "."
+						if (cabeceras == 0) {                       //Definimos una variable que sera la que usaremos para no repetir el bucle en caso de no 
+							printf("SMTP> Subject: \r\n");		    //Introducir un "." en el mensaje, pedios el subject, el to y el from
+							gets_s(input, sizeof(input));
+							strcpy_s(subj, sizeof(subj), input);
+							printf("SMTP> To: \r\n");
+							gets_s(input, sizeof(input));
+							strcpy_s(to, sizeof(to), input);
+							printf("SMTP> From: \r\n");
+							gets_s(input, sizeof(input));
+							strcpy_s(from, sizeof(from), input);
+							cabeceras = 1;
+
 							break;
 
 						}
@@ -248,11 +262,11 @@ int main(int* argc, char* argv[])
 								}
 								break;
 
-								break;
-
 							case S_DATA:
 
+								estado = S_MSG;					//En el estado DATA pasamos directamente al estado MSG
 								break;
+
 
 							case S_MSG:
 
