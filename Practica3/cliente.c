@@ -42,8 +42,9 @@ int main(int* argc, char* argv[])
 	char ipdest[256];
 	char default_ip4[16] = "127.0.0.1";
 	char default_ip6[64] = "::1";
-	char subj[64], to[64], from[64];
+	char a[1000], subj[64], to[64], from[64];
 	int recibir = 1, cabeceras = 0;
+	int x, z, espacios = 0, letras = 0;
 
 	WORD wVersionRequested;
 	WSADATA wsaData;
@@ -195,90 +196,122 @@ int main(int* argc, char* argv[])
 							strcpy_s(from, sizeof(from), input);
 							cabeceras = 1;
 
+						}  //Aquí montamos las cabeceras, que sera lo que se muestre en el localhost y añadimos el doble CRLF para que no se nos monte unas cabeceras encima de otras
+						else {
+							printf("SMTP> Escriba un mensaje y pulse '.' para salir \r\n");
+							gets_s(input, sizeof(input));
+							strcpy_s(a, sizeof(a), input);			//Asignamos la cadena de carácteres a una variable en este caso es "a"
+							z = strlen(a);							//El tamaño de "a", es igual a "z" (en números)
+							for (x = 0; x <= z; x++) {				//Hacemos un bucle 
+								if (a[x] == ' ') {					//Asignamos un contado en este caso espacios y ponemos que cuando se introduzca
+									espacios++;						//Un espacio, la varibale espacios suma 1.
+								}
+							}
+							letras = z + espacios;					//Asignamos a letras el número de carácteres introducidos en el mensaje + los espacios en blanco
+							if (letras > 998) {						//Si superamos 998 que es el máximo permito, nos saltara un erros y resetaremos, nos volveremos al estado MAIL
+								printf("Error has superado los caracterés máximos permitidos.");
+								estado = S_RSET;
+							}
+							else {
+								if (strcmp(input, ".") == 0) {    // Si no damos un error y no superamos el número establecido, pasamos a repetir el bucle hasta que introduzcamos un "."
+									sprintf_s(buffer_out, sizeof(buffer_out), "%s%s", input, CRLF);
+									recibir = 1;  // Cuando introducimos un "." cambiamos la variable a recibir a 1.
+								}
+								else
+									sprintf_s(buffer_out, sizeof(buffer_out), "%s%s", input, CRLF);
+							}
+						}
+						break;
+
+					}
+
+					if (estado != S_INIT) {
+						enviados = send(sockfd, buffer_out, (int)strlen(buffer_out), 0);    //send es una función que escribe hasta un numero de bytes	de datos del socket especificado
+						if (enviados == SOCKET_ERROR) {										//sockfd es un descriptor de socker creado anterior mente
+							printf("ERROR> Se ha perdido la conexión con el servidor\r\n");
+							estado = S_QUIT;
+							continue;// La sentencia continue hace que la ejecución dentro de un
+									 // bucle salte hasta la comprobación del mismo.
+						}
+					}
+
+					recibidos = recv(sockfd, buffer_in, 512, 0);
+					if (recibidos <= 0) {																	//Si recibimos 0 carácteres, nos saltara el último error que hayamos cometido
+						DWORD error = GetLastError();														//y nos dira que ha habido "x" error en la recepción de datos
+						if (recibidos < 0) {
+							printf("CLIENTE> Error %d en la recepción de datos\r\n", error);
+							estado = S_QUIT;
+						}
+						else {
+							printf("CLIENTE> Conexión con el servidor cerrada\r\n");
+							estado = S_QUIT;
+						}
+					}
+					else {
+						buffer_in[recibidos] = 0x00;
+						printf(buffer_in);
+						switch (estado) {
+						case S_INIT:
+							if (strncmp(buffer_in, "220", 3) == 0) {		//Si recibimos un 220 "codigo usado para dar la bienvenida"	
+								estado = S_HELO;							//pasamos al siguiente estado, si no nos vamos al estado QUIT
+							}
+							else {
+								estado = S_QUIT;
+							}
+							break;
+
+						case S_HELO:
+							if (strncmp(buffer_in, "250", 3) == 0) {		//Si recibimos un 250 "codigo usado para decir que todo esta bien OK"	
+								estado = S_MAIL;							//pasamos al siguiente estado, si no nos vamos al estado QUIT
+
+							}
+							else {
+								estado = S_QUIT;
+							}
+							break;
+						
+						case S_MAIL:
+							if (strncmp(buffer_in, "250", 3) == 0) {		//Si recibimos un 250 "codigo usado para decir que todo esta bien OK"
+								estado = S_RCPT;							//pasamos al siguiente estado, si no nos vamos al estado QUIT
+							}
+							else {
+								estado = S_QUIT;
+							}
+							break;
+
+						case S_RCPT:
+							if (strncmp(buffer_in, "250", 3) == 0) {		//Si recibimos un 250 "codigo usado para decir que todo esta bien OK"
+								estado = S_DATA;							//pasamos al siguiente estado, si no nos vamos al estado QUIT
+							}
+							else {
+								estado = S_QUIT;
+							}
+							break;
+
+						case S_DATA:
+
+							estado = S_MSG;					//En el estado DATA pasamos directamente al estado MSG
+							break;
+
+
+						case S_MSG:
+							if (strncmp(buffer_in, "250", 3) == 0) {								//Si recibimos un 250 "codigo usado para decir que todo esta bien OK"
+						
+
+								
+							}
+							else {
+								estado = S_QUIT;
+							}
+							break;
+
+						case S_RSET:
+
 							break;
 
 						}
+					}// fin switch estados
 
-						if (estado != S_INIT) {
-							enviados = send(sockfd, buffer_out, (int)strlen(buffer_out), 0);    //send es una función que escribe hasta un numero de bytes	de datos del socket especificado
-							if (enviados == SOCKET_ERROR) {										//sockfd es un descriptor de socker creado anterior mente
-								printf("ERROR> Se ha perdido la conexión con el servidor\r\n");
-								estado = S_QUIT;
-								continue;// La sentencia continue hace que la ejecución dentro de un
-										 // bucle salte hasta la comprobación del mismo.
-							}
-						}
-
-						recibidos = recv(sockfd, buffer_in, 512, 0);
-						if (recibidos <= 0) {																	//Si recibimos 0 carácteres, nos saltara el último error que hayamos cometido
-							DWORD error = GetLastError();														//y nos dira que ha habido "x" error en la recepción de datos
-							if (recibidos < 0) {
-								printf("CLIENTE> Error %d en la recepción de datos\r\n", error);
-								estado = S_QUIT;
-							}
-							else {
-								printf("CLIENTE> Conexión con el servidor cerrada\r\n");
-								estado = S_QUIT;
-							}
-						}
-						else {
-							buffer_in[recibidos] = 0x00;
-							printf(buffer_in);
-							switch (estado) {
-							case S_INIT:
-								if (strncmp(buffer_in, "220", 3) == 0) {		//Si recibimos un 220 "codigo usado para dar la bienvenida"	
-									estado = S_HELO;							//pasamos al siguiente estado, si no nos vamos al estado QUIT
-								}
-								else {
-									estado = S_QUIT;
-								}
-								break;
-
-							case S_HELO:
-								if (strncmp(buffer_in, "250", 3) == 0) {		//Si recibimos un 250 "codigo usado para decir que todo esta bien OK"	
-									estado = S_MAIL;							//pasamos al siguiente estado, si no nos vamos al estado QUIT
-
-								}
-								else {
-									estado = S_QUIT;
-								}
-								break;
-
-							case S_MAIL:
-								if (strncmp(buffer_in, "250", 3) == 0) {		//Si recibimos un 250 "codigo usado para decir que todo esta bien OK"
-									estado = S_RCPT;							//pasamos al siguiente estado, si no nos vamos al estado QUIT
-								}
-								else {
-									estado = S_QUIT;
-								}
-								break;
-
-							case S_RCPT:
-								if (strncmp(buffer_in, "250", 3) == 0) {		//Si recibimos un 250 "codigo usado para decir que todo esta bien OK"
-									estado = S_DATA;							//pasamos al siguiente estado, si no nos vamos al estado QUIT
-								}
-								else {
-									estado = S_QUIT;
-								}
-								break;
-
-							case S_DATA:
-
-								estado = S_MSG;					//En el estado DATA pasamos directamente al estado MSG
-								break;
-
-
-							case S_MSG:
-
-								break;
-
-							case S_RSET:
-
-								break;
-
-							}
-						}// fin switch estados
-					}
 
 				} while (estado != S_QUIT);
 			}
