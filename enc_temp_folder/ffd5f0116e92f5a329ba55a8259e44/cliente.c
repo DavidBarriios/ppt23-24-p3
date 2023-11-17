@@ -280,28 +280,12 @@ int main(int* argc, char* argv[])
 								break;
 
 							case S_RCPT:
-								if (strncmp(buffer_in, "250", 3) == 0) {										//Si recibimos un 250 "codigo usado para decir que todo esta bien OK
-									printf("¿Desea enviarselo a otro destinatario? (s) (Otra tecla): ");		//Le preguntamos si quiere enviar el mensaje a otro destinatario
-									gets_s(input, sizeof(input));												//si introducimos "s" o "S", nos volveremos al estado RCPT
-									if (strcmp(input, "s") == 0 || strcmp(input, "S") == 0) {					//para introducir el correo del otro destinatario
-										estado = S_RCPT;
-									}
-									else {
-
-										printf("¿Son correctos los datos? (n) (Otra tecla): ");					//Si no queremos mandarle el correo a otro destinatario
-										gets_s(input, sizeof(input));											//le preguntamos si los datos estan bien, por si se equivoco
-										if (strcmp(input, "n") == 0 || strcmp(input, "N") == 0) {				//a la hora de introducir el correo del destinatario, si nos dice que no
-											printf("SMTP> RESETEO\r\n");										//pasamos al siguiente estado, si pone otro carácter nos vamos al estado RESTET
-											estado = S_RSET;													//que el estado RESET nos lleva al estado MAIL
-										}
-										else
-											estado = S_DATA;
-									}
+								if (strncmp(buffer_in, "250", 3) == 0) {		//Si recibimos un 250 "codigo usado para decir que todo esta bien OK"
+									estado = S_DATA;							//pasamos al siguiente estado, si no nos vamos al estado QUIT
 								}
 								else {
 									estado = S_QUIT;
 								}
-
 								break;
 
 							case S_DATA:
@@ -312,19 +296,13 @@ int main(int* argc, char* argv[])
 
 							case S_MSG:
 								if (strncmp(buffer_in, "250", 3) == 0) {								//Si recibimos un 250 "codigo usado para decir que todo esta bien OK"
-									printf("¿Desea enviar otro mensaje? (s) (Otra tecla): ");			//Le preguntamos si quiere enviar el mensaje, si introduce "s" o "S"
-									gets_s(input, sizeof(input));										//nos vamos al estado MAIL, para inicializar las variables de nuevo
-									if (strcmp(input, "s") == 0 || strcmp(input, "S") == 0) {			//y que nos pida las cabeceras en el estado MSG, si no queremos mandar 
-										estado = S_MAIL;												//otro mensaje nos vamos al estado QUIT
-									}
-									else {
-										estado = S_QUIT;
-									}
+
+
+
 								}
 								else {
 									estado = S_QUIT;
 								}
-
 								break;
 
 							case S_RSET:
