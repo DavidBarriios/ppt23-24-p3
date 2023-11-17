@@ -234,85 +234,85 @@ int main(int* argc, char* argv[])
 									 // bucle salte hasta la comprobación del mismo.
 						}
 					}
-
-					recibidos = recv(sockfd, buffer_in, 512, 0);
-					if (recibidos <= 0) {																	//Si recibimos 0 carácteres, nos saltara el último error que hayamos cometido
-						DWORD error = GetLastError();														//y nos dira que ha habido "x" error en la recepción de datos
-						if (recibidos < 0) {
-							printf("CLIENTE> Error %d en la recepción de datos\r\n", error);
-							estado = S_QUIT;
+					if (recibir == 1) {         // Si la variable recibir es igual a 1, para esto tendría que haber un "." en el mensaje, pasamos a recibir los mensajes
+						recibidos = recv(sockfd, buffer_in, 512, 0);
+						if (recibidos <= 0) {																	//Si recibimos 0 carácteres, nos saltara el último error que hayamos cometido
+							DWORD error = GetLastError();														//y nos dira que ha habido "x" error en la recepción de datos
+							if (recibidos < 0) {
+								printf("CLIENTE> Error %d en la recepción de datos\r\n", error);
+								estado = S_QUIT;
+							}
+							else {
+								printf("CLIENTE> Conexión con el servidor cerrada\r\n");
+								estado = S_QUIT;
+							}
 						}
 						else {
-							printf("CLIENTE> Conexión con el servidor cerrada\r\n");
-							estado = S_QUIT;
-						}
+							buffer_in[recibidos] = 0x00;
+							printf(buffer_in);
+							switch (estado) {
+							case S_INIT:
+								if (strncmp(buffer_in, "220", 3) == 0) {		//Si recibimos un 220 "codigo usado para dar la bienvenida"	
+									estado = S_HELO;							//pasamos al siguiente estado, si no nos vamos al estado QUIT
+								}
+								else {
+									estado = S_QUIT;
+								}
+								break;
+
+							case S_HELO:
+								if (strncmp(buffer_in, "250", 3) == 0) {		//Si recibimos un 250 "codigo usado para decir que todo esta bien OK"	
+									estado = S_MAIL;							//pasamos al siguiente estado, si no nos vamos al estado QUIT
+
+								}
+								else {
+									estado = S_QUIT;
+								}
+								break;
+
+							case S_MAIL:
+								if (strncmp(buffer_in, "250", 3) == 0) {		//Si recibimos un 250 "codigo usado para decir que todo esta bien OK"
+									estado = S_RCPT;							//pasamos al siguiente estado, si no nos vamos al estado QUIT
+								}
+								else {
+									estado = S_QUIT;
+								}
+								break;
+
+							case S_RCPT:
+								if (strncmp(buffer_in, "250", 3) == 0) {		//Si recibimos un 250 "codigo usado para decir que todo esta bien OK"
+									estado = S_DATA;							//pasamos al siguiente estado, si no nos vamos al estado QUIT
+								}
+								else {
+									estado = S_QUIT;
+								}
+								break;
+
+							case S_DATA:
+
+								estado = S_MSG;					//En el estado DATA pasamos directamente al estado MSG
+								break;
+
+
+							case S_MSG:
+								if (strncmp(buffer_in, "250", 3) == 0) {								//Si recibimos un 250 "codigo usado para decir que todo esta bien OK"
+
+
+
+								}
+								else {
+									estado = S_QUIT;
+								}
+								break;
+
+							case S_RSET:
+
+								break;
+
+							}
+						}// fin switch estados
+
 					}
-					else {
-						buffer_in[recibidos] = 0x00;
-						printf(buffer_in);
-						switch (estado) {
-						case S_INIT:
-							if (strncmp(buffer_in, "220", 3) == 0) {		//Si recibimos un 220 "codigo usado para dar la bienvenida"	
-								estado = S_HELO;							//pasamos al siguiente estado, si no nos vamos al estado QUIT
-							}
-							else {
-								estado = S_QUIT;
-							}
-							break;
-
-						case S_HELO:
-							if (strncmp(buffer_in, "250", 3) == 0) {		//Si recibimos un 250 "codigo usado para decir que todo esta bien OK"	
-								estado = S_MAIL;							//pasamos al siguiente estado, si no nos vamos al estado QUIT
-
-							}
-							else {
-								estado = S_QUIT;
-							}
-							break;
-						
-						case S_MAIL:
-							if (strncmp(buffer_in, "250", 3) == 0) {		//Si recibimos un 250 "codigo usado para decir que todo esta bien OK"
-								estado = S_RCPT;							//pasamos al siguiente estado, si no nos vamos al estado QUIT
-							}
-							else {
-								estado = S_QUIT;
-							}
-							break;
-
-						case S_RCPT:
-							if (strncmp(buffer_in, "250", 3) == 0) {		//Si recibimos un 250 "codigo usado para decir que todo esta bien OK"
-								estado = S_DATA;							//pasamos al siguiente estado, si no nos vamos al estado QUIT
-							}
-							else {
-								estado = S_QUIT;
-							}
-							break;
-
-						case S_DATA:
-
-							estado = S_MSG;					//En el estado DATA pasamos directamente al estado MSG
-							break;
-
-
-						case S_MSG:
-							if (strncmp(buffer_in, "250", 3) == 0) {								//Si recibimos un 250 "codigo usado para decir que todo esta bien OK"
-						
-
-								
-							}
-							else {
-								estado = S_QUIT;
-							}
-							break;
-
-						case S_RSET:
-
-							break;
-
-						}
-					}// fin switch estados
-
-
 				} while (estado != S_QUIT);
 			}
 			else {
