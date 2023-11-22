@@ -43,7 +43,7 @@ int main(int* argc, char* argv[])
 	char default_ip4[16] = "127.0.0.1";
 	char default_ip6[64] = "::1";
 	char a[1000], subj[64], to[64], from[64];
-	int recibir = 1, cabeceras = 0;
+	int recibir = 1, header = 0;
 	int x, z, espacios = 0, letras = 0;
 
 	WORD wVersionRequested;
@@ -178,13 +178,13 @@ int main(int* argc, char* argv[])
 							sprintf_s(buffer_out, sizeof(buffer_out), "%s %s%s", ECHO, input, CRLF);
 						}
 						*/
-						cabeceras = 0;
+						header = 0;
 						sprintf_s(buffer_out, sizeof(buffer_out), " %s%s", DT, CRLF);
 						break;
 
 					case S_MSG:									//En el estado MSG montamos el mensaje que vamos a mandar
 						recibir = 0;								//Inicializamos la variable recibir a 0, para repetir el proceso de escribir un mensaje hasta que haya un "."
-						if (cabeceras == 0) {                       //Definimos una variable que sera la que usaremos para no repetir el bucle en caso de no 
+						if (header == 0) {                       //Definimos una variable que sera la que usaremos para no repetir el bucle en caso de no 
 							printf("SMTP> Subject: \r\n");		    //Introducir un "." en el mensaje, pedios el subject, el to y el from
 							gets_s(input, sizeof(input));
 							strcpy_s(subj, sizeof(subj), input);
@@ -194,7 +194,7 @@ int main(int* argc, char* argv[])
 							printf("SMTP> From: \r\n");
 							gets_s(input, sizeof(input));
 							strcpy_s(from, sizeof(from), input);
-							cabeceras = 1;
+							header = 1;
 
 						}  //Aquí montamos las cabeceras, que sera lo que se muestre en el localhost y añadimos el doble CRLF para que no se nos monte unas cabeceras encima de otras
 						else {
@@ -327,13 +327,22 @@ int main(int* argc, char* argv[])
 
 								break;
 
-							case S_RSET:
-
+								if (strncmp(buffer_in, "250", 3) == 0) {								//Si recibimos un 250 "codigo usado para decir que todo esta bien OK"
+									estado = S_MAIL;													//pasamos al estado MAIL, para iniciar de nuevo la petición del correo del remitenten, 
+								}																		//si no nos vamos al estado QUIT
+								else {
+									estado = S_HELO;
+								}
 								break;
 
-							}
-						}// fin switch estados
+							default:
+								if (strncmp(buffer_in, OK, 2) == 0) {									//Ponemos un default, para que por defecto si recibimos un OK, pasar al siguiente estado
+									estado++;															//se cual sea el estado
+								}
 
+
+							}// fin switch estados
+						}
 					}
 				} while (estado != S_QUIT);
 			}
