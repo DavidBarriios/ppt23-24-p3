@@ -8,13 +8,13 @@
  * Práctica 1.
  * Fichero: cliente.c
  * Versión: 3.1
- * Curso: 2023/2024
+ * Fecha: 10/2020
  * Descripción:
- * 	Cliente sencillo TCP para IPv4 e IPv6
+ * 	Cliente sencillo de SMTP para IPv4 e IPv6
  * Autor: Juan Carlos Cuevas Martínez
  *
  ******************************************************
- * Alumno 1:
+ * Alumno 1: David Barrios Garcia
  * Alumno 2:
  *
  ******************************************************/
@@ -40,12 +40,13 @@ int main(int* argc, char* argv[])
 	char option;
 	int ipversion = AF_INET;//IPv4 por defecto
 	char ipdest[256];
-	char default_ip4[16] = "127.0.0.1";
+	char default_ip4[16] = "127.0.0.1";  //ARGOSOFT ->
 	char default_ip6[64] = "::1";
+	//char remitente[60];
+	//char destinatario[60];
 	char a[1000], subj[64], to[64], from[64];
 	int recibir = 1, cabeceras = 0;
 	int x, z, espacios = 0, letras = 0;
-
 	WORD wVersionRequested;
 	WSADATA wsaData;
 	int err;
@@ -71,8 +72,8 @@ int main(int* argc, char* argv[])
 	printf("**************\r\nCLIENTE TCP SENCILLO SOBRE IPv4 o IPv6\r\n*************\r\n");
 
 	do {
-		printf("CLIENTE> ¿Qué versión de IP desea usar? 6 para IPv6, 4 para IPv4 [por defecto] ");
-		gets_s(ipdest, sizeof(ipdest));
+		printf("CLIENTE> ¿Qué versión de IP desea usar? 6 para IPv6, 4 para IPv4 [por defecto] ");      //Pedimos al cliente que indique que versión quiere usar si no pulsa la 6,
+		gets_s(ipdest, sizeof(ipdest));																	//por defecto se usara la 4
 
 		if (strcmp(ipdest, "6") == 0) {
 			//Si se introduce 6 se empleará IPv6
@@ -83,14 +84,16 @@ int main(int* argc, char* argv[])
 			ipversion = AF_INET;
 		}
 
-		sockfd = socket(ipversion, SOCK_STREAM, 0);
-		if (sockfd == INVALID_SOCKET) {
-			printf("CLIENTE> ERROR\r\n");
+		sockfd = socket(ipversion, SOCK_STREAM, 0);				// La función socket crea el socket y lo enlaza con un proveedor de servicio
+		if (sockfd == INVALID_SOCKET) {							//SOCK_STREAM es un protocolo de transmisión de información
+			printf("CLIENTE> ERROR\r\n");						//Si hubiera algun error un error con la versión
 			exit(-1);
 		}
+
+
 		else {
-			printf("CLIENTE> Introduzca la IP destino (pulsar enter para IP por defecto): ");
-			gets_s(ipdest, sizeof(ipdest));
+			printf("CLIENTE> Introduzca la IP destino (pulsar enter para IP por defecto): ");			//Pedimos la dirección de destino, sino por defecto tenemos
+			gets_s(ipdest, sizeof(ipdest));																// la 127.0.0.1 de localhost
 
 			//Dirección por defecto según la familia
 			if (strcmp(ipdest, "") == 0 && ipversion == AF_INET)
@@ -166,24 +169,24 @@ int main(int* argc, char* argv[])
 						break;
 
 					case S_DATA:
-						/*
-						printf("SMTP> Introduzca datos (enter o QUIT para salir): ");
+						/*printf("CLIENTE> Introduzca datos (enter o QUIT para salir): ");
 						gets_s(input, sizeof(input));
 						if (strlen(input) == 0) {
 							sprintf_s(buffer_out, sizeof(buffer_out), "%s%s", SD, CRLF);
 							estado = S_QUIT;
 						}
 						else {
-
 							sprintf_s(buffer_out, sizeof(buffer_out), "%s %s%s", ECHO, input, CRLF);
 						}
-						*/
-						cabeceras = 0;
+						break;
+						*/cabeceras = 0;        // Inicializamos cabeceras a 0, para pedir las cabeceras en el estado MSG
 						sprintf_s(buffer_out, sizeof(buffer_out), " %s%s", DT, CRLF);
 						break;
 
+
+
 					case S_MSG:									//En el estado MSG montamos el mensaje que vamos a mandar
-						recibir = 0;								//Inicializamos la variable recibir a 0, para repetir el proceso de escribir un mensaje hasta que haya un "."
+						recibir = 0;							//Inicializamos la variable recibir a 0, para repetir el proceso de escribir un mensaje hasta que haya un "."
 						if (cabeceras == 0) {                       //Definimos una variable que sera la que usaremos para no repetir el bucle en caso de no 
 							printf("SMTP> Subject: \r\n");		    //Introducir un "." en el mensaje, pedios el subject, el to y el from
 							gets_s(input, sizeof(input));
@@ -194,8 +197,10 @@ int main(int* argc, char* argv[])
 							printf("SMTP> From: \r\n");
 							gets_s(input, sizeof(input));
 							strcpy_s(from, sizeof(from), input);
-							cabeceras = 1;
+							cabeceras = 1;							//Después de pedir las cabeceras, cambiamos la variable a 1, de esta manera no volvemos a pedir las cabeceras
+																	//más si no introducimos el "." , al redactar otro mensaje, volveriamos a pedir las cabeceras, ya que estaria inicializada a 0 en el estado DATA
 
+							sprintf_s(buffer_out, sizeof(buffer_out), "%s%s%s%s%s%s%s%s%s%s", "From: ", from, CRLF, "To:", to, CRLF, "Subject:", subj, CRLF, CRLF, CRLF);
 						}  //Aquí montamos las cabeceras, que sera lo que se muestre en el localhost y añadimos el doble CRLF para que no se nos monte unas cabeceras encima de otras
 						else {
 							printf("SMTP> Escriba un mensaje y pulse '.' para salir \r\n");
@@ -234,6 +239,7 @@ int main(int* argc, char* argv[])
 									 // bucle salte hasta la comprobación del mismo.
 						}
 					}
+
 					if (recibir == 1) {         // Si la variable recibir es igual a 1, para esto tendría que haber un "." en el mensaje, pasamos a recibir los mensajes
 						recibidos = recv(sockfd, buffer_in, 512, 0);
 						if (recibidos <= 0) {																	//Si recibimos 0 carácteres, nos saltara el último error que hayamos cometido
@@ -280,12 +286,28 @@ int main(int* argc, char* argv[])
 								break;
 
 							case S_RCPT:
-								if (strncmp(buffer_in, "250", 3) == 0) {		//Si recibimos un 250 "codigo usado para decir que todo esta bien OK"
-									estado = S_DATA;							//pasamos al siguiente estado, si no nos vamos al estado QUIT
+								if (strncmp(buffer_in, "250", 3) == 0) {										//Si recibimos un 250 "codigo usado para decir que todo esta bien OK
+									printf("¿Desea enviarselo a otro destinatario? (s) (Otra tecla): ");		//Le preguntamos si quiere enviar el mensaje a otro destinatario
+									gets_s(input, sizeof(input));												//si introducimos "s" o "S", nos volveremos al estado RCPT
+									if (strcmp(input, "s") == 0 || strcmp(input, "S") == 0) {					//para introducir el correo del otro destinatario
+										estado = S_RCPT;
+									}
+									else {
+
+										printf("¿Son correctos los datos? (n) (Otra tecla): ");					//Si no queremos mandarle el correo a otro destinatario
+										gets_s(input, sizeof(input));											//le preguntamos si los datos estan bien, por si se equivoco
+										if (strcmp(input, "n") == 0 || strcmp(input, "N") == 0) {				//a la hora de introducir el correo del destinatario, si nos dice que no
+											printf("SMTP> RESETEO\r\n");										//pasamos al siguiente estado, si pone otro carácter nos vamos al estado RESTET
+											estado = S_RSET;													//que el estado RESET nos lleva al estado MAIL
+										}
+										else
+											estado = S_DATA;
+									}
 								}
 								else {
 									estado = S_QUIT;
 								}
+
 								break;
 
 							case S_DATA:
@@ -296,22 +318,37 @@ int main(int* argc, char* argv[])
 
 							case S_MSG:
 								if (strncmp(buffer_in, "250", 3) == 0) {								//Si recibimos un 250 "codigo usado para decir que todo esta bien OK"
-
-
-
+									printf("¿Desea enviar otro mensaje? (s) (Otra tecla): ");			//Le preguntamos si quiere enviar el mensaje, si introduce "s" o "S"
+									gets_s(input, sizeof(input));										//nos vamos al estado MAIL, para inicializar las variables de nuevo
+									if (strcmp(input, "s") == 0 || strcmp(input, "S") == 0) {			//y que nos pida las cabeceras en el estado MSG, si no queremos mandar 
+										estado = S_MAIL;												//otro mensaje nos vamos al estado QUIT
+									}
+									else {
+										estado = S_QUIT;
+									}
 								}
 								else {
 									estado = S_QUIT;
 								}
+
 								break;
 
 							case S_RSET:
-
+								if (strncmp(buffer_in, "250", 3) == 0) {								//Si recibimos un 250 "codigo usado para decir que todo esta bien OK"
+									estado = S_MAIL;													//pasamos al estado MAIL, para iniciar de nuevo la petición del correo del remitenten, 
+								}																		//si no nos vamos al estado QUIT
+								else {
+									estado = S_HELO;
+								}
 								break;
 
-							}
-						}// fin switch estados
+							default:
+								if (strncmp(buffer_in, OK, 2) == 0) {									//Ponemos un default, para que por defecto si recibimos un OK, pasar al siguiente estado
+									estado++;															//se cual sea el estado
+								}
+							}// fin switch estados
 
+						}
 					}
 				} while (estado != S_QUIT);
 			}
@@ -319,10 +356,11 @@ int main(int* argc, char* argv[])
 				int error_code = GetLastError();
 				printf("CLIENTE> ERROR AL CONECTAR CON %s:%d\r\n", ipdest, TCP_SERVICE_PORT);
 			}
+			printf("CLIENTE> Se cerrara el socket\r\n");											//Cuando haya un error o hayamos terminado la conexión nos saltará este aviso y cerraremos el socker
 			closesocket(sockfd);
 
 		}
-		printf("-----------------------\r\n\r\nCLIENTE> Volver a conectar (S/N)\r\n");
+		printf("-----------------------\r\n\r\nCLIENTE> Volver a conectar (S/N)\r\n");				//Si queremos volver a conectar solo tenemos que pulsar cualquier tecla que no sea "n" o "N"
 		option = _getche();
 
 	} while (option != 'n' && option != 'N');
