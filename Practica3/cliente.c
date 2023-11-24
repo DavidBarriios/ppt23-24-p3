@@ -182,9 +182,9 @@ int main(int* argc, char* argv[])
 						sprintf_s(buffer_out, sizeof(buffer_out), " %s%s", DT, CRLF);
 						break;
 
-					case S_MSG:									//En el estado MSG montamos el mensaje que vamos a mandar
+					case S_MSG:										//En el estado MSG montamos el mensaje que vamos a mandar
 						recibir = 0;								//Inicializamos la variable recibir a 0, para repetir el proceso de escribir un mensaje hasta que haya un "."
-						if (header == 0) {                       //Definimos una variable que sera la que usaremos para no repetir el bucle en caso de no 
+						if (header == 0) {							//Definimos una variable que sera la que usaremos para no repetir el bucle en caso de no 
 							printf("SMTP> Subject: \r\n");		    //Introducir un "." en el mensaje, pedios el subject, el to y el from
 							gets_s(input, sizeof(input));
 							strcpy_s(subj, sizeof(subj), input);
@@ -327,6 +327,7 @@ int main(int* argc, char* argv[])
 
 								break;
 
+							case S_RSET:
 								if (strncmp(buffer_in, "250", 3) == 0) {								//Si recibimos un 250 "codigo usado para decir que todo esta bien OK"
 									estado = S_MAIL;													//pasamos al estado MAIL, para iniciar de nuevo la petición del correo del remitenten, 
 								}																		//si no nos vamos al estado QUIT
